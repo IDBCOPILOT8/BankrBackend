@@ -104,10 +104,31 @@ npm run type-check
 
 The API automatically seeds test data on startup:
 
-- **Email**: `alex@example.com`
-- **Password**: `password`
-- **Accounts**: 2 (Checking: $2,360.42, Savings: $12,450)
-- **Transactions**: 17 sample transactions
+### Test Users & Credentials
+
+| Username | Email | Password | Accounts |
+|----------|-------|----------|----------|
+| Alex Demo | `alex@example.com` | `password` | Checking ($2,360.42), Savings ($12,450) |
+| QA Tester | `qa@example.com` | `password` | QA Checking ($5,000), QA Savings ($10,000) |
+| Jane Smith | `jane@example.com` | `password` | Checking ($3,500), Savings ($25,000) |
+
+### Sample Data
+
+- **Total Users**: 3
+- **Total Accounts**: 6 (2 per user)
+- **Sample Transactions**: 16+ (for testing pagination)
+- **Transaction Types**: DEBIT, CREDIT, TRANSFER
+
+### Quick Test Login
+
+```bash
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "qa@example.com",
+    "password": "password"
+  }'
+```
 
 ## API Documentation
 

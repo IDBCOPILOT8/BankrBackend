@@ -24,9 +24,12 @@ All endpoints except /auth/* require a JWT token in the Authorization header:
 
 Tokens expire after 7 days.
 
-SEED DATA (for testing):
-  Email:    alex@example.com
-  Password: password
+TEST CREDENTIALS (for testing):
+  User 1: alex@example.com / password
+  User 2: qa@example.com / password
+  User 3: jane@example.com / password
+
+All users with password: "password"
 
 ================================================================================
                               ENDPOINTS
@@ -582,10 +585,43 @@ After transfer:
 - acct2 balance increases by 100.00
 
 ================================================================================
-                            QUICK REFERENCE
+                        QUICK REFERENCE
 ================================================================================
 
-CURL EXAMPLES:
+TEST DATA OVERVIEW:
+
+User 1: ALEX DEMO (alex@example.com)
+--------
+Accounts:
+  - Chequing Account (**** 1234): $2,360.42 CAD
+  - Savings Account (**** 5678): $12,450.00 CAD
+Transactions: 10+ transactions for testing pagination
+
+User 2: QA TESTER (qa@example.com)
+--------
+Accounts:
+  - QA Checking (**** 9999): $5,000.00 CAD
+  - QA Savings (**** 8888): $10,000.00 CAD
+Transactions: 3+ transactions for testing
+
+User 3: JANE SMITH (jane@example.com)
+--------
+Accounts:
+  - Chequing (**** 7777): $3,500.00 CAD
+  - Savings (**** 6666): $25,000.00 CAD
+Transactions: 3+ transactions for testing
+
+All passwords: "password"
+
+TEST SCENARIOS:
+  1. Login with different users
+  2. List/view accounts for each user
+  3. Get transactions with pagination
+  4. Transfer between accounts (same user)
+  5. Test error cases (insufficient funds, unauthorized)
+
+================================================================================
+                            CURL EXAMPLES
 
 1. Health Check
    curl -X GET https://bankr-backend-ipvj.vercel.app/health
@@ -614,25 +650,107 @@ CURL EXAMPLES:
                           TESTING CHECKLIST
 ================================================================================
 
-Before deploying to production, test:
+AVAILABLE TEST DATA:
 
+✓ 3 fully configured test users
+✓ 6 accounts total (2 per user)
+✓ 16+ transactions for realistic testing
+✓ Various transaction types (DEBIT, CREDIT, TRANSFER)
+✓ Different balance amounts (lean vs. rich accounts)
+
+BEFORE DEPLOYING TO PRODUCTION, TEST:
+
+[ ] Login with User 1 (alex@example.com)
+[ ] Login with User 2 (qa@example.com)
+[ ] Login with User 3 (jane@example.com)
 [ ] Health endpoint returns 200
-[ ] User registration with valid data
+[ ] User registration with valid new user
 [ ] User registration rejects duplicate emails
-[ ] Login with valid credentials
-[ ] Login rejects invalid password
+[ ] Password validation works (requires 6+ characters)
 [ ] JWT token is returned on successful login
 [ ] Unauthorized requests without token return 401
-[ ] Get accounts returns list
+[ ] Get accounts lists both accounts for logged-in user
 [ ] Get single account returns account details
-[ ] Get transactions with pagination works
+[ ] List accounts doesn't show other users' accounts (403)
+[ ] Get transactions works with pagination
+[ ] Pagination cursor works for next page
 [ ] Transfer succeeds with sufficient funds
 [ ] Transfer fails with insufficient funds
 [ ] Transfer fails when both accounts are the same
-[ ] CORS headers are present
+[ ] Transfer fails for accounts belonging to different users (403)
+[ ] CORS headers are present in responses
 [ ] Error responses follow format: { error: { code, message } }
 [ ] All endpoints validate user owns account (403 if not)
 [ ] Tokens expire after 7 days
+[ ] Account balances update correctly after transfer
+
+SAMPLE LOGIN TEST (with curl):
+
+curl -X POST https://bankr-backend-ipvj.vercel.app/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "qa@example.com",
+    "password": "password"
+  }'
+
+Expected Response:
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "...",
+    "name": "QA Tester",
+    "email": "qa@example.com",
+    "createdAt": "..."
+  }
+}
+
+================================================================================
+                          SAMPLE TEST FLOW
+================================================================================
+
+1. LOGIN AS QA TESTER
+   POST /auth/login
+   {
+     "email": "qa@example.com",
+     "password": "password"
+   }
+
+2. LIST ACCOUNTS
+   GET /accounts
+   Authorization: Bearer <token>
+   
+   Expected: 2 accounts (QA Checking $5000, QA Savings $10000)
+
+3. GET TRANSACTIONS
+   GET /accounts/<checking-id>/transactions?limit=10
+   Authorization: Bearer <token>
+   
+   Expected: List of transactions with pagination cursor
+
+4. TRANSFER BETWEEN OWN ACCOUNTS
+   POST /transfers
+   Authorization: Bearer <token>
+   {
+     "fromAccountId": "<checking-id>",
+     "toAccountId": "<savings-id>",
+     "amount": 1000.00,
+     "note": "Transfer test"
+   }
+   
+   Expected: Transfer succeeds, balances update
+   - Checking becomes $4000
+   - Savings becomes $11000
+
+5. VERIFY TRANSFER IN TRANSACTION HISTORY
+   GET /accounts/<checking-id>/transactions
+   Authorization: Bearer <token>
+   
+   Expected: Transfer appears as DEBIT in checking account
+
+================================================================================
+Before deploying to production, also verify:
+
+[ ] No console errors in Function Logs
 
 ================================================================================
                           DEPLOYMENT URLS
